@@ -393,6 +393,13 @@ private:
 		if (vkCreateSwapchainKHR(_device, &createInfo, nullptr, &_swapChain) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create swap chain.");
 		}
+
+		vkGetSwapchainImagesKHR(_device, _swapChain, &imageCount, nullptr);
+		_swapChainImages.resize(imageCount);
+		vkGetSwapchainImagesKHR(_device, _swapChain, &imageCount, _swapChainImages.data());
+
+		_swapChainImageFormat = surfaceFormat.format;
+		_swapChainExtent = extent;
 	}
 
 	void createLogicalDevice() {
@@ -532,6 +539,9 @@ private:
 	VkQueue _graphicsQueue;
 	VkQueue _presentQueue;
 	VkSwapchainKHR _swapChain;
+	std::vector<VkImage> _swapChainImages;
+	VkFormat _swapChainImageFormat;
+	VkExtent2D _swapChainExtent;
 	VkSurfaceKHR _surface;
 	VkDebugUtilsMessengerEXT _debugMessenger;
 };
