@@ -1,3 +1,5 @@
 /.vs/*
 /x64/*
 /VulkanTest/x64/*
+*.spv
+.vscode
