@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include <vector>
+#include <optional>
 
 #include <iostream>
 
@@ -78,6 +79,18 @@ private:
 		_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 	}
 
+	void listAvailableExtensions() {
+		uint32_t extensionCount = 0;
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+		std::vector<VkExtensionProperties> extensions(extensionCount);
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+		std::cout << "Available Extensions :: \n";
+		for (const auto& extension : extensions) {
+			std::cout << '\t' << extension.extensionName << '\n';
+		}
+
+	}
+
 	void createInstance() {
 
 		if (enableValidationLayers && !checkValidationLayerSupport()) {
@@ -115,14 +128,7 @@ private:
 		}
 
 		// List available extensions. Optional.
-		uint32_t extensionCount = 0;
-		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-		std::vector<VkExtensionProperties> extensions(extensionCount);
-		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-		std::cout << "Available Extensions :: \n";
-		for (const auto& extension : extensions) {
-			std::cout << '\t' << extension.extensionName << '\n';
-		}
+		listAvailableExtensions();
 
 		if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create instance");
@@ -135,17 +141,50 @@ private:
 		pickPhysicalDevice();
 	}
 
+	struct QueueFamilyindices {
+		std::optional<uint32_t> graphicsFamily;
+		bool isComplete() {
+			return graphicsFamily.has_value();
+		}
+	};
+	QueueFamilyindices findQueueFamilies(VkPhysicalDevice device) {
+		// Logic to find graphics queue family.
+		QueueFamilyindices indices;
+		// Assign index to queue famiily that could be found.
+
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+		int i = 0;
+		for (const auto& queueFamily : queueFamilies) {
+			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+				indices.graphicsFamily = i;
+			}
+			if (indices.isComplete()) {
+				break;
+			}
+			++i;
+		}
+
+		return indices;
+	}
+
 	bool isDeviceSuitable(VkPhysicalDevice device) {
 
-		VkPhysicalDeviceProperties deviceProperties;
-		vkGetPhysicalDeviceProperties(device, &deviceProperties);
+		//VkPhysicalDeviceProperties deviceProperties;
+		//vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-		VkPhysicalDeviceFeatures deviceFeatures;
-		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+		//VkPhysicalDeviceFeatures deviceFeatures;
+		//vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
 		// Query for suitable properties/features ??
 
-		return true;
+		QueueFamilyindices indices = findQueueFamilies(device);
+
+		return indices.isComplete();
 	}
 	void pickPhysicalDevice() {
 		uint32_t deviceCount = 0;
@@ -169,6 +208,7 @@ private:
 			throw std::runtime_error("failed to find a suitable GPU.");
 		}
 	}
+
 
 	bool checkValidationLayerSupport() {
 		uint32_t layerCount;
