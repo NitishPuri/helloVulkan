@@ -163,6 +163,7 @@ private:
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
+		createSyncObjects();
 	}
 
 	void createSurface() {
@@ -812,6 +813,20 @@ private:
 		}
 	}
 
+	void createSyncObjects() {
+		VkSemaphoreCreateInfo semaphoreInfo{};
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+		if (vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphore) != VK_SUCCESS ||
+			vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphore) != VK_SUCCESS ||
+			vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFence) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create semaphores.");
+		}
+	}
+
 	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -858,16 +873,24 @@ private:
 		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
 			throw std::runtime_error("failed to record command buffer.");
 		}
-
 	}
 
 	void mainLoop() {
 		while (!glfwWindowShouldClose(_window)) {
 			glfwPollEvents();
+			drawFrame();
 		}
 	}
 
+	void drawFrame() {
+
+	}
+
 	void cleanup() {
+		vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
+		vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
+		vkDestroyFence(_device, _inFlightFence, nullptr);
+
 		vkDestroyCommandPool(_device, _commandPool, nullptr);
 		for (auto framebuffer : _swapChainFramebuffers) {
 			vkDestroyFramebuffer(_device, framebuffer, nullptr);
@@ -898,21 +921,32 @@ private:
 private:
 	GLFWwindow* _window;
 	VkInstance _instance;
+
 	VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
 	VkDevice _device;
+
 	VkQueue _graphicsQueue;
 	VkQueue _presentQueue;
+
 	VkSwapchainKHR _swapChain;
 	std::vector<VkImage> _swapChainImages;
 	VkFormat _swapChainImageFormat;
 	VkExtent2D _swapChainExtent;
 	std::vector<VkImageView> _swapChainImageViews;
+
 	VkSurfaceKHR _surface;
 	VkRenderPass _renderPass;
+
 	VkPipelineLayout _pipelineLayout;
 	VkPipeline _graphicsPipeline;
+
 	std::vector<VkFramebuffer> _swapChainFramebuffers;
 	VkCommandPool _commandPool;
+
+	VkSemaphore _imageAvailableSemaphore;
+	VkSemaphore _renderFinishedSemaphore;
+	VkFence _inFlightFence;
+
 	VkDebugUtilsMessengerEXT _debugMessenger;
 };
 
