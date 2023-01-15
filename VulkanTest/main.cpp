@@ -91,9 +91,16 @@ private:
 		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+		//glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 		_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+		glfwSetWindowUserPointer(_window, this);
+		glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
+	}
+
+	static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+		auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
+		app->_frameBufferResized = true;
 	}
 
 	void listAvailableExtensions() {
@@ -424,6 +431,13 @@ private:
 	}
 
 	void recreateSwapChain() {
+		int width = 0, height = 0;
+		glfwGetFramebufferSize(_window, &width, &height);
+		while (width == 0 || height == 0) {
+			glfwGetFramebufferSize(_window, &width, &height);
+			glfwWaitEvents();
+		}
+
 		vkDeviceWaitIdle(_device);
 
 		cleanupSwapChain();
@@ -991,7 +1005,8 @@ private:
 
 		result = vkQueuePresentKHR(_presentQueue, &presentInfo);
 
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || _frameBufferResized) {
+			_frameBufferResized = false;
 			recreateSwapChain();
 		}
 		else if(result != VK_SUCCESS) {
@@ -1063,6 +1078,7 @@ private:
 	std::vector<VkFence> _inFlightFences;
 
 	uint32_t _currentFrame = 0;
+	bool _frameBufferResized = false;
 
 	VkDebugUtilsMessengerEXT _debugMessenger;
 };
