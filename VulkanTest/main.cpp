@@ -109,6 +109,12 @@ const std::vector<uint16_t> _indices = {
 	2, 3, 0
 };
 
+struct UniformBufferObject {
+	glm::mat4 model;
+	glm::mat4 view;
+	glm::mat4 proj;
+};
+
 class HelloTriangleApplication {
 public:
 	void run() {
@@ -212,11 +218,13 @@ private:
 		createSwapChain();
 		createImageViews();
 		createRenderPass();
+		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
 		createVertexBuffer();
 		createIndexBuffer();
+		createUniformBuffers();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -700,6 +708,25 @@ private:
 		}
 	}
 
+	void createDescriptorSetLayout() {
+		VkDescriptorSetLayoutBinding uboLayoutBinding{};
+		uboLayoutBinding.binding = 0;
+		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBinding.descriptorCount = 1;
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		uboLayoutBinding.pImmutableSamplers = nullptr;
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo{};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = 1;
+		layoutInfo.pBindings = &uboLayoutBinding;
+
+
+		if (vkCreateDescriptorSetLayout(_device, &layoutInfo, nullptr, &_descriptorSetLayout) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create descriptor set layout!");
+		}
+	}
+
 	void createGraphicsPipeline() {
 
 		// Shader modules
@@ -1018,6 +1045,21 @@ private:
 		vkFreeMemory(_device, stagingBufferMemory, nullptr);
 	}
 
+	void createUniformBuffers() {
+		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		
+		_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		_uniformBufferMemory.resize(MAX_FRAMES_IN_FLIGHT);
+		_uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				_uniformBuffers[i], _uniformBufferMemory[i]);
+
+			vkMapMemory(_device, _uniformBufferMemory[i], 0, bufferSize, 0, &_uniformBuffersMapped[i]);
+		}
+	}
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 		VkPhysicalDeviceMemoryProperties memProperties;
@@ -1198,6 +1240,13 @@ private:
 
 		cleanupSwapChain();
 
+		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+			vkDestroyBuffer(_device, _uniformBuffers[i], nullptr);
+			vkFreeMemory(_device, _uniformBufferMemory[i], nullptr);
+		}
+
+		vkDestroyDescriptorSetLayout(_device, _descriptorSetLayout, nullptr);
+
 		vkDestroyBuffer(_device, _vertexBuffer, nullptr);
 		vkFreeMemory(_device, _vertexBufferMemory, nullptr);
 
@@ -1248,6 +1297,7 @@ private:
 	VkSurfaceKHR _surface;
 	VkRenderPass _renderPass;
 
+	VkDescriptorSetLayout _descriptorSetLayout;
 	VkPipelineLayout _pipelineLayout;
 	VkPipeline _graphicsPipeline;
 
@@ -1265,6 +1315,10 @@ private:
 	VkDeviceMemory _vertexBufferMemory;
 	VkBuffer _indexBuffer;
 	VkDeviceMemory _indexBufferMemory;
+
+	std::vector<VkBuffer> _uniformBuffers;
+	std::vector<VkDeviceMemory> _uniformBufferMemory;
+	std::vector<void*> _uniformBuffersMapped;
 
 	uint32_t _currentFrame = 0;
 	bool _frameBufferResized = false;
