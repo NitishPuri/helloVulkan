@@ -98,9 +98,15 @@ struct Vertex {
 };
 
 const std::vector<Vertex> _vertices = {
-	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+const std::vector<uint16_t> _indices = {
+	0, 1, 2,
+	2, 3, 0
 };
 
 class HelloTriangleApplication {
@@ -210,6 +216,7 @@ private:
 		createFramebuffers();
 		createCommandPool();
 		createVertexBuffer();
+		createIndexBuffer();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -988,6 +995,28 @@ private:
 		vkFreeMemory(_device, stagingBufferMemory, nullptr);
 	}
 
+	void createIndexBuffer() {
+		VkDeviceSize bufferSize = sizeof(_indices[0] * _indices.size());
+
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			stagingBuffer, stagingBufferMemory);
+
+		void* data;
+		vkMapMemory(_device, stagingBufferMemory, 0, bufferSize, 0, &data);
+		memcpy(data, _indices.data(), bufferSize);
+		vkUnmapMemory(_device, stagingBufferMemory);
+
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _indexBuffer, _indexBufferMemory);
+
+		copyBuffer(stagingBuffer, _indexBuffer, bufferSize);
+
+		vkDestroyBuffer(_device, stagingBuffer, nullptr);
+		vkFreeMemory(_device, stagingBufferMemory, nullptr);
+	}
 
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -1170,6 +1199,9 @@ private:
 		vkDestroyBuffer(_device, _vertexBuffer, nullptr);
 		vkFreeMemory(_device, _vertexBufferMemory, nullptr);
 
+		vkDestroyBuffer(_device, _indexBuffer, nullptr);
+		vkFreeMemory(_device, _indexBufferMemory, nullptr);
+
 		vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
 		vkDestroyRenderPass(_device, _renderPass, nullptr);
@@ -1229,6 +1261,8 @@ private:
 
 	VkBuffer _vertexBuffer;
 	VkDeviceMemory _vertexBufferMemory;
+	VkBuffer _indexBuffer;
+	VkDeviceMemory _indexBufferMemory;
 
 	uint32_t _currentFrame = 0;
 	bool _frameBufferResized = false;
