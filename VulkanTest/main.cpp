@@ -234,7 +234,10 @@ private:
 		createFramebuffers();
 
 		createCommandPool();
+
 		createTextureImage();
+		createTextureImageView();
+
 		createVertexBuffer();
 		createIndexBuffer();
 
@@ -568,26 +571,7 @@ private:
 		_swapChainImageViews.resize(_swapChainImages.size());
 
 		for (int i = 0; i < _swapChainImages.size(); ++i) {
-			VkImageViewCreateInfo createInfo{};
-			createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			createInfo.image = _swapChainImages[i];
-			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			createInfo.format = _swapChainImageFormat;
-
-			createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-			createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			createInfo.subresourceRange.baseMipLevel = 0;
-			createInfo.subresourceRange.levelCount = 1;
-			createInfo.subresourceRange.baseArrayLayer = 0;
-			createInfo.subresourceRange.layerCount = 1;
-
-			if (vkCreateImageView(_device, &createInfo, nullptr, &_swapChainImageViews[i]) != VK_SUCCESS) {
-				throw std::runtime_error("failed to create image views");
-			}
+			_swapChainImageViews[i] = createImageView(_swapChainImages[i], _swapChainImageFormat);
 		}
 	}
 
@@ -1093,6 +1077,26 @@ private:
 		vkBindImageMemory(_device, image, imageMemory, 0);
 	}
 
+	VkImageView createImageView(VkImage image, VkFormat format) {
+		VkImageViewCreateInfo viewInfo{};
+		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewInfo.image = image;
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		viewInfo.format = format;
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		viewInfo.subresourceRange.layerCount = 1;
+
+		VkImageView imageView;
+		if (vkCreateImageView(_device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create texture image view!");
+		}
+
+		return imageView;
+	}
+
 	void createTextureImage() {
 		int texWidth, texHeight, texChannels;
 		stbi_uc* pixels = stbi_load("textures/texture.jpg", 
@@ -1206,6 +1210,10 @@ private:
 		);
 
 		endSingleTimeCommands(commandBuffer);
+	}
+
+	void createTextureImageView() {
+		_textureImageView = createImageView(_textureimage, VK_FORMAT_R8G8B8A8_SRGB);
 	}
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -1497,6 +1505,7 @@ private:
 
 		cleanupSwapChain();
 
+		vkDestroyImageView(_device, _textureImageView, nullptr);
 		vkDestroyImage(_device, _textureimage, nullptr);
 		vkFreeMemory(_device, _textureImageMemory, nullptr);
 
@@ -1581,6 +1590,7 @@ private:
 	VkDeviceMemory _indexBufferMemory;
 
 	VkImage _textureimage;
+	VkImageView _textureImageView;
 	VkDeviceMemory _textureImageMemory;
 
 	std::vector<VkBuffer> _uniformBuffers;
