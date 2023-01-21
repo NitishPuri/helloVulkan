@@ -15,12 +15,16 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
+
+#include <unordered_map>
 
 #include <chrono>
 
@@ -115,7 +119,21 @@ struct Vertex {
 
 		return attributeDescriptions;
 	}
+
+	bool operator==(const Vertex& other) const {
+		return pos == other.pos && color == other.color && texCoord == other.texCoord;
+	}
 };
+
+namespace std {
+	template<> struct hash<Vertex> {
+		size_t operator()(Vertex const& vertex) const {
+			return ((hash<glm::vec3>()(vertex.pos) ^
+				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+				(hash<glm::vec2>()(vertex.texCoord) << 1);
+		}
+	};
+}
 
 //const std::vector<Vertex> _vertices = {
 //	{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
@@ -1053,6 +1071,9 @@ private:
 			throw std::runtime_error(warn + err);
 		}
 
+		std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+
+
 		for (const auto& shape : shapes) {
 			for (const auto& index : shape.mesh.indices) {
 				Vertex vertex{};
@@ -1066,8 +1087,13 @@ private:
 					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
 				};
 				vertex.color = { 1.0f, 1.0f, 1.0f };
-				_vertices.push_back(vertex);
-				_indices.push_back(_indices.size());
+
+				if (uniqueVertices.count(vertex) == 0) {
+					uniqueVertices[vertex] = static_cast<uint32_t>(_vertices.size());
+					_vertices.push_back(vertex);
+				}
+
+				_indices.push_back(uniqueVertices[vertex]);
 			}
 		}
 	}
