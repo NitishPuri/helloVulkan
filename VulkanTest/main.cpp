@@ -237,6 +237,7 @@ private:
 
 		createTextureImage();
 		createTextureImageView();
+		createTextureSampler();
 
 		createVertexBuffer();
 		createIndexBuffer();
@@ -323,8 +324,8 @@ private:
 		//VkPhysicalDeviceProperties deviceProperties;
 		//vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-		//VkPhysicalDeviceFeatures deviceFeatures;
-		//vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+		VkPhysicalDeviceFeatures deviceFeatures;
+		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
 		// Query for suitable properties/features ??
 
@@ -338,7 +339,8 @@ private:
 			swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
 		}
 
-		return indices.isComplete() && extensionsSupported && swapChainAdequate;
+		return indices.isComplete() && extensionsSupported && 
+			swapChainAdequate && deviceFeatures.samplerAnisotropy;
 	}
 	void pickPhysicalDevice() {
 		uint32_t deviceCount = 0;
@@ -541,6 +543,7 @@ private:
 		}
 
 		VkPhysicalDeviceFeatures deviceFeatures{};
+		deviceFeatures.samplerAnisotropy = VK_TRUE;
 
 		VkDeviceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -1216,6 +1219,36 @@ private:
 		_textureImageView = createImageView(_textureimage, VK_FORMAT_R8G8B8A8_SRGB);
 	}
 
+	void createTextureSampler() {
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+		VkPhysicalDeviceProperties properties{};
+		vkGetPhysicalDeviceProperties(_physicalDevice, &properties);
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		if (vkCreateSampler(_device, &samplerInfo, nullptr, &_textureSampler) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create texture sampler!");
+		}
+	}
+
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(_physicalDevice, &memProperties);
@@ -1505,6 +1538,7 @@ private:
 
 		cleanupSwapChain();
 
+		vkDestroySampler(_device, _textureSampler, nullptr);
 		vkDestroyImageView(_device, _textureImageView, nullptr);
 		vkDestroyImage(_device, _textureimage, nullptr);
 		vkFreeMemory(_device, _textureImageMemory, nullptr);
@@ -1592,6 +1626,7 @@ private:
 	VkImage _textureimage;
 	VkImageView _textureImageView;
 	VkDeviceMemory _textureImageMemory;
+	VkSampler _textureSampler;
 
 	std::vector<VkBuffer> _uniformBuffers;
 	std::vector<VkDeviceMemory> _uniformBufferMemory;
