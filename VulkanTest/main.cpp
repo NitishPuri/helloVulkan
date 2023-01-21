@@ -508,6 +508,11 @@ private:
 	}
 
 	void cleanupSwapChain() {
+		
+		vkDestroyImageView(_device, _depthImageView, nullptr);
+		vkDestroyImage(_device, _depthImage, nullptr);
+		vkFreeMemory(_device, _depthImageMemory, nullptr);
+
 		for (auto framebuffer : _swapChainFramebuffers) {
 			vkDestroyFramebuffer(_device, framebuffer, nullptr);
 		}
@@ -520,7 +525,7 @@ private:
 
 	void recreateSwapChain() {
 		int width = 0, height = 0;
-		glfwGetFramebufferSize(_window, &width, &height);
+		//glfwGetFramebufferSize(_window, &width, &height);
 		while (width == 0 || height == 0) {
 			glfwGetFramebufferSize(_window, &width, &height);
 			glfwWaitEvents();
@@ -532,6 +537,7 @@ private:
 
 		createSwapChain();
 		createImageViews();
+		createDepthResources();
 		createFramebuffers();
 	}
 
