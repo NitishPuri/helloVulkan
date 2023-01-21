@@ -243,11 +243,9 @@ private:
 
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
-		createFramebuffers();
-
-		createCommandPool();
-
+		createCommandPool();		
 		createDepthResources();
+		createFramebuffers();
 
 		createTextureImage();
 		createTextureImageView();
@@ -936,7 +934,6 @@ private:
 		pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineCreateInfo.basePipelineIndex = -1;
 
-		VkPipeline graphicsPipeline;
 		if (vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &_graphicsPipeline) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create graphics pipeline.");
 		}
@@ -949,15 +946,16 @@ private:
 		_swapChainFramebuffers.resize(_swapChainImageViews.size());
 
 		for (int i = 0; i < _swapChainImageViews.size(); ++i) {
-			VkImageView attachments[] = {
-				_swapChainImageViews[i]
+			std::array<VkImageView, 2> attachments = {
+				_swapChainImageViews[i],
+				_depthImageView
 			};
 
 			VkFramebufferCreateInfo framebufferInfo{};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferInfo.renderPass = _renderPass;
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
+			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments = attachments.data();
 			framebufferInfo.width = _swapChainExtent.width;
 			framebufferInfo.height = _swapChainExtent.height;
 			framebufferInfo.layers = 1;
