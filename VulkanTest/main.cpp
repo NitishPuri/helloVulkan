@@ -267,7 +267,8 @@ private:
 
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
-		createCommandPool();		
+		createCommandPool();
+		createColorResources();
 		createDepthResources();
 		createFramebuffers();
 
@@ -535,6 +536,10 @@ private:
 
 	void cleanupSwapChain() {
 		
+		vkDestroyImageView(_device, _colorImageView, nullptr);
+		vkDestroyImage(_device, _colorImage, nullptr);
+		vkFreeMemory(_device, _colorImageMemory, nullptr);
+
 		vkDestroyImageView(_device, _depthImageView, nullptr);
 		vkDestroyImage(_device, _depthImage, nullptr);
 		vkFreeMemory(_device, _depthImageMemory, nullptr);
@@ -563,6 +568,7 @@ private:
 
 		createSwapChain();
 		createImageViews();
+		createColorResources();
 		createDepthResources();
 		createFramebuffers();
 	}
@@ -1161,8 +1167,9 @@ private:
 		}
 	}
 
-	void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
-		VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, 
+	void createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
+		VkSampleCountFlagBits numSample, VkFormat format, VkImageTiling tiling,
+		VkImageUsageFlags usage, VkMemoryPropertyFlags properties, 
 		VkImage& image, VkDeviceMemory& imageMemory) {
 
 		VkImageCreateInfo imageInfo{};
@@ -1178,7 +1185,7 @@ private:
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageInfo.usage = usage;
 		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		imageInfo.samples = numSample;
 		imageInfo.flags = 0;
 
 		if (vkCreateImage(_device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
@@ -1271,13 +1278,24 @@ private:
 	void createDepthResources() {
 		VkFormat depthFormat = findDepthFormat();
 
-		createImage(_swapChainExtent.width, _swapChainExtent.height, 1, depthFormat,
+		createImage(_swapChainExtent.width, _swapChainExtent.height, 1, _msaaSamples, depthFormat,
 			VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _depthImage, _depthImageMemory);
 		_depthImageView = createImageView(_depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
 		transitionImageLayout(_depthImage, depthFormat,
 			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+	}
+
+	void createColorResources() {
+		VkFormat colorFormat = _swapChainImageFormat;
+
+		createImage(_swapChainExtent.width, _swapChainExtent.height, 1, _msaaSamples,
+			colorFormat, VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _colorImage, _colorImageMemory);
+
+		_colorImageView = createImageView(_colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}
 
 	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t miplevels) {
@@ -1392,7 +1410,7 @@ private:
 		stbi_image_free(pixels);
 
 		createImage(static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), _mipLevels,
-			VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+			VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
 			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			_textureimage, _textureImageMemory);
@@ -1910,6 +1928,10 @@ private:
 	VkImage _depthImage;
 	VkDeviceMemory _depthImageMemory;
 	VkImageView _depthImageView;
+
+	VkImage _colorImage;
+	VkDeviceMemory _colorImageMemory;
+	VkImageView _colorImageView;
 
 	VkSurfaceKHR _surface;
 	VkRenderPass _renderPass;
