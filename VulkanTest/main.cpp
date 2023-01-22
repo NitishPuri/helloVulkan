@@ -393,6 +393,7 @@ private:
 		for (const auto& device : devices) {
 			if (isDeviceSuitable(device)) {
 				_physicalDevice = device;
+				_msaaSamples = getMaxUsableSampleCount();
 				break;
 			}
 		}
@@ -1250,6 +1251,23 @@ private:
 		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 	}
 
+	VkSampleCountFlagBits getMaxUsableSampleCount() {
+		VkPhysicalDeviceProperties physicalDeviceProperties;
+		vkGetPhysicalDeviceProperties(_physicalDevice, &physicalDeviceProperties);
+
+		VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts &
+			physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+
+		if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+		if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+		if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+		if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+		if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+		if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+		return VK_SAMPLE_COUNT_1_BIT;
+	}
+
 	void createDepthResources() {
 		VkFormat depthFormat = findDepthFormat();
 
@@ -1925,6 +1943,8 @@ private:
 	VkImageView _textureImageView;
 	VkDeviceMemory _textureImageMemory;
 	VkSampler _textureSampler;
+
+	VkSampleCountFlagBits _msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	std::vector<VkBuffer> _uniformBuffers;
 	std::vector<VkDeviceMemory> _uniformBufferMemory;
